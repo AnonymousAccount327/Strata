@@ -7,7 +7,7 @@ make clean && make
 
 For example:
 
-./main 1.27 com-amazon-cmty-hygra 
+./main 1.27 Hypergraphs/com-amazon-cmty-hygra 
 
 ## Datasets 
 We evaluate on public hypergraph benchmarks from SNAP (Stanford Large Network Dataset Collection): 
@@ -21,6 +21,6 @@ PPoPP’20 AE repo: https://github.com/jshun/ppopp20-ae
 
 Our converters mirror those scripts (same field ordering, indexing, and bipartite incidence layout), so inputs produced with the PPoPP’20 pipeline work directly with this code.
 
-
+Please download the dataset from SNAP first and then convert into the Hygra layout. Next, save them in the "Hypergraphs" folder in order to run the dataset.
 
 
