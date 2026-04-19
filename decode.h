@@ -22,7 +22,7 @@
 
 #include <cstdint>
 #include <vector>
-#include "huffman_tree.h"
+#include "freq_model.h"
 using namespace std;
 // Function: decodeSide
 //

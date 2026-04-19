@@ -11,8 +11,8 @@
 #include <algorithm>
 #include <iostream>
 
-#include "decode.h"       // readBits(...) declaration + HuffmanNode
-#include "huffman_tree.h" // struct HuffmanNode { HuffmanNode* l,*r; int v; ... }
+#include "decode.h"      
+#include "freq_model.h" 
 
 using std::vector;
 using std::uint8_t;

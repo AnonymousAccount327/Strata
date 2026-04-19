@@ -3,7 +3,7 @@
 
 #include <vector>
 #include "hypergraph.h"
-#include "huffman_tree.h"
+#include "freq_model.h"
 using namespace std;
 /**
  * @file BFS.h
@@ -44,6 +44,13 @@ vector<int> bfs_single_source_raw(
     const int* deg,
     const int* edges,
     int src
+);
+
+
+uint64_t run_block_bfs(
+    const std::vector<std::vector<int>>& decoded_block,
+    int global_i0,
+    int source_global
 );
 
 #endif // BFS_H

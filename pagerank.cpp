@@ -17,7 +17,7 @@
 #include <unistd.h>
 #include <cstdio>
 
-#include "huffman_tree.h"  // defines HuffmanNode { HuffmanNode *l,*r; int v; ... }
+#include "freq_model.h"  
 #include "decode.h"        // declares readBits(...), extract_block_slices(...)
 
 using namespace std;
@@ -329,4 +329,63 @@ void runPageRankOnDemand_decodeRandom(
               << std::chrono::duration<double>(t1 - t0).count() << " s"
               << " | peak block RSS \xCE\x94 = " << peak_block_rss_bytes << " bytes"
               << " | final RSS = " << rss_bytes() << " bytes\n";
+}
+
+double run_block_pagerank_iteration(
+    const std::vector<std::vector<int>>& decoded_block,
+    int global_i0,
+    int iters = 3,
+    double damping = 0.85
+) {
+    const int L = (int)decoded_block.size();
+    if (L == 0) return 0.0;
+
+    std::vector<double> pr(L, 1.0 / L), next(L, 0.0);
+    std::vector<int> local_outdeg(L, 0);
+
+    #pragma omp parallel for schedule(static)
+    for (int u = 0; u < L; ++u) {
+        int cnt = 0;
+        for (int v_global : decoded_block[u]) {
+            int v_local = v_global - global_i0;
+            if (v_local >= 0 && v_local < L) {
+                cnt++;
+            }
+        }
+        local_outdeg[u] = cnt;
+    }
+
+    for (int it = 0; it < iters; ++it) {
+        const double base = (1.0 - damping) / L;
+
+        #pragma omp parallel for schedule(static)
+        for (int i = 0; i < L; ++i) {
+            next[i] = base;
+        }
+
+        #pragma omp parallel for schedule(static)
+        for (int u = 0; u < L; ++u) {
+            int local_out = local_outdeg[u];
+            if (local_out == 0) continue;
+
+            double contrib = damping * pr[u] / local_out;
+            for (int v_global : decoded_block[u]) {
+                int v_local = v_global - global_i0;
+                if (v_local >= 0 && v_local < L) {
+                    #pragma omp atomic
+                    next[v_local] += contrib;
+                }
+            }
+        }
+
+        pr.swap(next);
+    }
+
+    double checksum = 0.0;
+    #pragma omp parallel for reduction(+:checksum) schedule(static)
+    for (int i = 0; i < L; ++i) {
+        checksum += pr[i];
+    }
+
+    return checksum;
 }

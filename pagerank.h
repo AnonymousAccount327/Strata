@@ -3,7 +3,7 @@
 
 #include <vector>
 #include <cstdint>
-#include "huffman_tree.h"
+#include "freq_model.h"
 /**
  * @file pagerank.h
  * @brief Header file for hypergraph PageRank implementation.
@@ -35,6 +35,13 @@ void runPageRankOnDemand_decodeRandom(
     int iters, double alpha,
     // block index (precomputed in encode; no decoding)
     const uint64_t* blockHi, const uint64_t* blockLo, int BLOCK
+);
+
+double run_block_pagerank_iteration(
+    const std::vector<std::vector<int>>& decoded_block,
+    int global_i0,
+    int iters = 3,
+    double damping = 0.85
 );
 
 #endif // PAGERANK_H

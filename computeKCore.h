@@ -3,7 +3,7 @@
 
 #include <vector>
 #include <cstdint>
-#include "huffman_tree.h"
+#include "freq_model.h"
 using namespace std;
 /**
  * @file core_decomposition.h
@@ -51,4 +51,11 @@ vector<char> computeKCore_raw(
     const int* edges,
     int k_thresh
 );
+
+uint64_t run_block_kcore(
+    const std::vector<std::vector<int>>& decoded_block,
+    int global_i0,
+    int k_thresh
+);
+
 #endif // CORE_DECOMPOSITION_H

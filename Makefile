@@ -1,7 +1,7 @@
 
 CXX = g++
 CXXFLAGS = -std=c++17 -O3 -fopenmp
-OBJS = main.o hypergraph.o huffman_tree.o huffman_code.o encode.o decode.o BFS.o computeKCore.o pagerank.o
+OBJS = main.o hypergraph.o freq_model.o freq_code.o encode.o decode.o BFS.o computeKCore.o pagerank.o
 
 all: main
 

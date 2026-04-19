@@ -22,7 +22,7 @@
 #include <unistd.h>       // sysconf
 #include <sys/resource.h>
 #include "decode.h"          // extract_block_slices(...), readBits(...)
-#include "huffman_tree.h"    // struct HuffmanNode { HuffmanNode *l,*r; int v; }
+#include "freq_model.h"    // struct HuffmanNode { HuffmanNode *l,*r; int v; }
 
 using namespace std;
 
@@ -365,4 +365,78 @@ std::vector<int> bfs_single_source_raw(
               << " | RSS Î = " << (r_after > r_before ? (r_after - r_before) : 0) << " bytes"
               << " | time=" << std::chrono::duration<double>(t1 - t0).count() << " s";
     return dist;
+}
+
+#include <vector>
+#include <cstdint>
+#include <omp.h>
+
+uint64_t run_block_bfs(
+    const std::vector<std::vector<int>>& decoded_block,
+    int global_i0,
+    int source_global
+) {
+    const int L = (int)decoded_block.size();
+    const int source_local = source_global - global_i0;
+    if (source_local < 0 || source_local >= L) return 0;
+
+    std::vector<int> dist(L, -1);
+    std::vector<int> frontier, next_frontier;
+    frontier.push_back(source_local);
+    dist[source_local] = 0;
+
+    uint64_t checksum = 0;
+    int level = 0;
+
+    while (!frontier.empty()) {
+        uint64_t level_sum = 0;
+
+        #pragma omp parallel
+        {
+            std::vector<int> local_next;
+            uint64_t local_sum = 0;
+
+            #pragma omp for schedule(dynamic, 64)
+            for (int i = 0; i < (int)frontier.size(); ++i) {
+                int u = frontier[i];
+                local_sum += (uint64_t)(u + 1);
+
+                for (int v_global : decoded_block[u]) {
+                    int v_local = v_global - global_i0;
+                    if (v_local >= 0 && v_local < L) {
+                        bool discovered = false;
+
+                        #pragma omp critical
+                        {
+                            if (dist[v_local] == -1) {
+                                dist[v_local] = level + 1;
+                                discovered = true;
+                            }
+                        }
+
+                        if (discovered) {
+                            local_next.push_back(v_local);
+                        }
+                    }
+                }
+            }
+
+            #pragma omp atomic
+            level_sum += local_sum;
+
+            #pragma omp critical
+            {
+                next_frontier.insert(next_frontier.end(),
+                                     local_next.begin(),
+                                     local_next.end());
+            }
+        }
+
+        checksum += level_sum;
+        frontier.swap(next_frontier);
+        next_frontier.clear();
+        level++;
+    }
+
+    return checksum;
 }

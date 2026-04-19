@@ -9,7 +9,7 @@
 #include <omp.h>
 #include <cstdint>
 #include "decode.h"
-#include "huffman_tree.h"
+#include "freq_model.h"
 
 using namespace std;
 
@@ -330,4 +330,77 @@ std::vector<char> computeKCore_raw(
               << " s\n";
 
     return inCore;
+}
+
+uint64_t run_block_kcore(
+    const std::vector<std::vector<int>>& decoded_block,
+    int global_i0,
+    int k_thresh
+) {
+    const int L = (int)decoded_block.size();
+    std::vector<int> deg(L, 0);
+    std::vector<char> alive(L, 1);
+    std::queue<int> q;
+
+    // Parallel degree computation
+    #pragma omp parallel for schedule(static)
+    for (int u = 0; u < L; ++u) {
+        int local_deg = 0;
+        for (int v_global : decoded_block[u]) {
+            int v_local = v_global - global_i0;
+            if (v_local >= 0 && v_local < L) {
+                local_deg++;
+            }
+        }
+        deg[u] = local_deg;
+    }
+
+    // Parallel collection of initial low-degree vertices
+    #pragma omp parallel
+    {
+        std::vector<int> local_q;
+
+        #pragma omp for nowait schedule(static)
+        for (int u = 0; u < L; ++u) {
+            if (deg[u] < k_thresh) {
+                local_q.push_back(u);
+            }
+        }
+
+        #pragma omp critical
+        {
+            for (int u : local_q) {
+                q.push(u);
+            }
+        }
+    }
+
+    // Sequential peeling loop
+    while (!q.empty()) {
+        int u = q.front();
+        q.pop();
+        if (!alive[u]) continue;
+
+        alive[u] = 0;
+
+        for (int v_global : decoded_block[u]) {
+            int v_local = v_global - global_i0;
+            if (v_local >= 0 && v_local < L && alive[v_local]) {
+                deg[v_local]--;
+                if (deg[v_local] < k_thresh) {
+                    q.push(v_local);
+                }
+            }
+        }
+    }
+
+    uint64_t survivors = 0;
+
+    // Parallel reduction for survivor counting
+    #pragma omp parallel for reduction(+:survivors) schedule(static)
+    for (int u = 0; u < L; ++u) {
+        survivors += alive[u];
+    }
+
+    return survivors;
 }
